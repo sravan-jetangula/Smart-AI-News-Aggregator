@@ -1,0 +1,31 @@
+# ──────────────────────────────────────────────────────────
+# requirements.txt
+# Pinned to Python 3.11 compatible versions.
+# SQLAlchemy 2.0.x is NOT compatible with Python 3.14+.
+# Render must be locked to Python 3.11 via .python-version.
+# ──────────────────────────────────────────────────────────
+
+# Core Framework
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+
+# Database
+sqlalchemy==2.0.36
+
+# RSS Fetching
+feedparser==6.0.11
+
+# HTTP client (for Groq API)
+httpx==0.28.1
+
+# Environment variables
+python-dotenv==1.0.1
+
+# Template engine
+jinja2==3.1.5
+
+# Static file serving
+aiofiles==24.1.0
+
+# Production server (for Render deployment)
+gunicorn==23.0.0
