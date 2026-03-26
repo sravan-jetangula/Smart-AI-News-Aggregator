@@ -1,11 +1,5 @@
 """
 main.py - FastAPI application entry point.
-
-Initializes the app, registers all routers, creates DB tables on startup,
-and serves the frontend static files + HTML templates.
-
-Run locally:
-  uvicorn main:app --reload --port 8000
 """
 
 import os
@@ -19,21 +13,20 @@ from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
 load_dotenv()
 
-# Configure logging
+# Logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 logger = logging.getLogger(__name__)
 
-# Import database and models
+# DB imports
 from backend.database import engine, Base
-from backend.models import NewsArticle, Favorite, BroadcastLog  # noqa: F401 — needed for table creation
+from backend.models import NewsArticle, Favorite, BroadcastLog
 
-# Import routers
+# Routers
 from backend.routes.news import router as news_router
 from backend.routes.favorites import router as favorites_router
 from backend.routes.broadcast import router as broadcast_router
@@ -41,28 +34,27 @@ from backend.routes.broadcast import router as broadcast_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Startup: Create all database tables if they don't exist.
-    Shutdown: Log graceful shutdown.
-    """
-    logger.info("Starting AI News Dashboard...")
-    Base.metadata.create_all(bind=engine)
-    logger.info("Database tables initialized.")
+    logger.info("🚀 Starting AI News Dashboard...")
+
+    try:
+        Base.metadata.create_all(bind=engine)
+        logger.info("✅ Database initialized")
+    except Exception as e:
+        logger.error(f"❌ DB Error: {e}")
+        raise e
+
     yield
-    logger.info("Shutting down AI News Dashboard.")
+
+    logger.info("🛑 Shutting down AI News Dashboard...")
 
 
-# ─────────────────────────────────────────────
-# Create FastAPI app instance
-# ─────────────────────────────────────────────
 app = FastAPI(
-    title="AI News Aggregation & Broadcasting Dashboard",
-    description="Aggregates AI news from RSS feeds, deduplicates, summarizes with Groq, and simulates broadcasting.",
+    title="AI News Dashboard",
     version="1.0.0",
     lifespan=lifespan,
 )
 
-# CORS — allow all origins for development (restrict in production)
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -71,41 +63,53 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ─────────────────────────────────────────────
-# Register API routers
-# ─────────────────────────────────────────────
+# Routers
 app.include_router(news_router, prefix="/api")
 app.include_router(favorites_router, prefix="/api")
 app.include_router(broadcast_router, prefix="/api")
 
-# ─────────────────────────────────────────────
-# Static files and templates
-# ─────────────────────────────────────────────
-FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "frontend")
+# -------------------------------
+# STATIC + TEMPLATES (SAFE FIX)
+# -------------------------------
+BASE_DIR = os.path.dirname(__file__)
+FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 
-app.mount("/static", StaticFiles(directory=os.path.join(FRONTEND_DIR, "static")), name="static")
-templates = Jinja2Templates(directory=os.path.join(FRONTEND_DIR, "templates"))
+static_dir = os.path.join(FRONTEND_DIR, "static")
+templates_dir = os.path.join(FRONTEND_DIR, "templates")
+
+if os.path.exists(static_dir):
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+else:
+    logger.warning("⚠️ Static folder not found")
+
+if os.path.exists(templates_dir):
+    templates = Jinja2Templates(directory=templates_dir)
+else:
+    templates = None
+    logger.warning("⚠️ Templates folder not found")
 
 
-@app.get("/", response_class=HTMLResponse, include_in_schema=False)
+@app.get("/", response_class=HTMLResponse)
 def index(request: Request):
-    """Serve the main news dashboard page."""
-    return templates.TemplateResponse("index.html", {"request": request})
+    if templates:
+        return templates.TemplateResponse("index.html", {"request": request})
+    return {"message": "Frontend not available"}
 
 
-@app.get("/favorites", response_class=HTMLResponse, include_in_schema=False)
+@app.get("/favorites", response_class=HTMLResponse)
 def favorites_page(request: Request):
-    """Serve the favorites page."""
-    return templates.TemplateResponse("favorites.html", {"request": request})
+    if templates:
+        return templates.TemplateResponse("favorites.html", {"request": request})
+    return {"message": "Frontend not available"}
 
 
-@app.get("/logs", response_class=HTMLResponse, include_in_schema=False)
+@app.get("/logs", response_class=HTMLResponse)
 def logs_page(request: Request):
-    """Serve the broadcast logs page."""
-    return templates.TemplateResponse("logs.html", {"request": request})
+    if templates:
+        return templates.TemplateResponse("logs.html", {"request": request})
+    return {"message": "Frontend not available"}
 
 
 @app.get("/health")
 def health_check():
-    """Health check endpoint for Render and Docker healthchecks."""
-    return {"status": "ok", "service": "AI News Dashboard"}
+    return {"status": "ok"}
