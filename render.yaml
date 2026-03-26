@@ -1,28 +1,16 @@
-# render.yaml — Render.com deployment configuration
-# Free tier: 512 MB RAM, 0.1 CPU, 750 hrs/month, spins down after 15 min inactivity
-#
-# IMPORTANT: Uses native Python runtime (not Docker) so Render respects
-# the .python-version file (3.11.9) and avoids Python 3.14 incompatibility
-# with SQLAlchemy.
-
 services:
   - type: web
     name: ai-news-dashboard
-    env: python
+    env: docker
     plan: free
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "gunicorn main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --workers 2 --timeout 120"
+
     envVars:
       - key: GROQ_API_KEY
-        sync: false          # Set this manually in Render dashboard
-      - key: DATABASE_URL
-        value: sqlite:////data/ai_news.db
-      - key: ENV
-        value: production
-      - key: PYTHON_VERSION
-        value: 3.11.9
+        sync: false
+
     disk:
       name: db-storage
       mountPath: /data
-      sizeGB: 1              # Free tier includes 1 GB persistent disk
+      sizeGB: 1
+
     healthCheckPath: /health
